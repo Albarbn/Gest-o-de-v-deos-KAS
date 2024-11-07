@@ -120,6 +120,16 @@ def download_video():
             info_dict = ydl.extract_info(youtube_link, download=True)
             title = info_dict.get('title', 'Vídeo')
             return jsonify({"success": True, "message": f"Download concluído para: {title}"})
+        
+        @after_this_request
+        def remove_file(response):
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                app.logger.error(f"Erro ao remover arquivo: {e}")
+            return response
+
+        return send_file(file_path, as_attachment=True, download_name=f"{title}.mp4")
 
     except Exception as e:
         return jsonify({"success": False, "message": str(e)})
