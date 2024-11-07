@@ -1,8 +1,10 @@
 from flask import Flask, render_template, request, jsonify
 from googleapiclient.discovery import build
 from forex_python.converter import CurrencyRates
+import yt_dlp
 import requests
 import isodate
+import os
 
 app = Flask(__name__)
 api_key = "AIzaSyCYtWYgjqvA3p1xfQTLkZoiH_4toJubWGU"
@@ -54,6 +56,84 @@ def get_dollar_rate():
     except (requests.exceptions.RequestException, KeyError, ValueError) as e:
         print("Erro ao obter taxa de câmbio:", e)
         return None
+
+@app.route("/video-info", methods=["POST"])
+def video_info():
+    data = request.json
+    youtube_link = data.get("youtube_link")
+
+    try:
+        ydl_opts = {
+            "quiet": True,
+            "skip_download": True
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info_dict = ydl.extract_info(youtube_link, download=False)
+            formats = info_dict.get('formats', [])
+            thumbnail = info_dict.get('thumbnail', '')
+            title = info_dict.get('title', 'Título Desconhecido')
+
+            quality_set = {}
+            for f in formats:
+                resolution = f.get('height', 'audio')  # 'audio' para streams só de áudio
+                if resolution not in quality_set or (f.get('vcodec') != 'none' and f.get('acodec') != 'none'):
+                    quality_set[resolution] = {
+                        "format_id": f['format_id'],
+                        "resolution": f.get('resolution', 'Somente Áudio'),
+                        "format_note": f.get('format_note', ''),
+                        "has_video": f.get('vcodec') != 'none',
+                        "has_audio": f.get('acodec') != 'none'
+                    }
+
+            qualities = list(quality_set.values())
+
+            return jsonify({
+                "success": True,
+                "title": title,
+                "thumbnail": thumbnail,
+                "qualities": qualities
+            })
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+
+
+@app.route("/download", methods=["POST"])
+def download_video():
+    data = request.json
+    youtube_link = data.get("youtube_link")
+    format_id = data.get("quality")
+
+    try:
+        download_folder = "downloads"
+        os.makedirs(download_folder, exist_ok=True)
+
+        # Definir opções do yt-dlp
+        ydl_opts = {
+            "format": format_id,  # Usa o formato diretamente
+            "outtmpl": f"{download_folder}/%(title)s.%(ext)s",
+            "merge_output_format": "mp4",  # Garante saída em MP4
+            "postprocessors": [
+                {
+                    "key": "FFmpegVideoConvertor",
+                    "preferedformat": "mp4"  # Converte se necessário
+                }
+            ]
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info_dict = ydl.extract_info(youtube_link, download=True)
+            title = info_dict.get('title', 'Vídeo')
+            return jsonify({"success": True, "message": f"Download concluído para: {title}"})
+
+    except yt_dlp.utils.DownloadError as e:
+        return jsonify({"success": False, "message": f"Erro de download: {str(e)}"})
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+
+if __name__ == "__main__":
+    app.run(debug=True)
 
 @app.route("/")
 def index():

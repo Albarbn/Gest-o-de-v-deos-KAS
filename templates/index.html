@@ -51,8 +51,31 @@
 </head>
 <body>
     <div class="container my-5">
+        <!-- Área de Inserção do Link do YouTube e Botões -->
+        <div class="card mb-4" style="background-color: #2E2E2E;">
+            <div class="card-body">
+                <h3 class="text-center" style="color: #FEFDFF;">Download de Vídeo do YouTube</h3>
+                <form id="youtube-form" onsubmit="return false;">
+                    <div class="form-group">
+                        <label for="youtube-link" style="color: #E1E1E1;">Insira o Link do YouTube:</label>
+                        <input type="url" id="youtube-link" class="form-control" placeholder="https://www.youtube.com/watch?v=EXEMPLO" required>
+                    </div>
+                    <div id="video-info" style="display: none; margin-top: 20px;">
+                        <img id="thumbnail" src="" alt="Thumbnail" style="width: 100%; max-width: 300px; margin-bottom: 10px;">
+                        <h4 id="video-title" style="color: #E1E1E1;"></h4>
+                        <label for="video-quality" style="color: #E1E1E1;">Selecione a Qualidade:</label>
+                        <select id="video-quality" class="form-control"></select>
+                    </div>
+                    <div class="text-center" style="margin-top: 20px;">
+                        <button class="btn btn-success" onclick="downloadVideo()">Baixar Vídeo</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <h1>Painel de Vídeos</h1>
         <h2>Selecione os Vídeos para Cálculo do Total</h2>
+    </div>
 
         <!-- Botões para Selecionar Todos e Deselecionar Todos os Vídeos -->
         <div class="text-center mb-3">
@@ -126,9 +149,78 @@
         </div>
     </div>
 
-    <!-- Bootstrap JS e Font Awesome -->
+     <!-- Bootstrap JS e Font Awesome -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
     <script>
+            document.getElementById("youtube-link").addEventListener("input", function () {
+            const link = this.value;
+            if (link) {
+                fetch("/video-info", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ youtube_link: link })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById("video-info").style.display = "block";
+                        document.getElementById("thumbnail").src = data.thumbnail;
+                        document.getElementById("video-title").innerText = data.title;
+
+                        const qualitySelect = document.getElementById("video-quality");
+                        qualitySelect.innerHTML = ""; // Limpar opções anteriores
+                        data.qualities.forEach(quality => {
+                            const option = document.createElement("option");
+                            option.value = quality.format_id;
+                            option.text = quality.resolution + " (" + quality.format_note + ")";
+                            if (!quality.has_video) {
+                                option.text += " (Áudio apenas)";
+                            }
+                            qualitySelect.add(option);
+                        });
+                    } else {
+                        alert("Erro ao obter informações do vídeo: " + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error("Erro:", error);
+                    alert("Erro ao processar o link do YouTube.");
+                });
+            }
+        });
+
+        function downloadVideo() {
+            const link = document.getElementById("youtube-link").value;
+            const quality = document.getElementById("video-quality").value;
+
+            if (!link) {
+                alert("Por favor, insira um link válido do YouTube.");
+                return;
+            }
+
+            fetch("/download", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ youtube_link: link, quality: quality })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Download iniciado: " + data.message);
+                } else {
+                    alert("Erro: " + data.message);
+                }
+            })
+            .catch(error => {
+                console.error("Erro ao iniciar download:", error);
+                alert("Erro ao tentar baixar o vídeo.");
+            });
+        }
+            
         function copyTitle(title) {
             navigator.clipboard.writeText(title).then(() => {
                 alert("Título copiado: " + title);
