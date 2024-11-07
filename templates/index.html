@@ -221,7 +221,9 @@
                 const a = document.createElement("a");
                 a.style.display = "none";
                 a.href = url;
-                a.download = "video.mp4";  // Nome do arquivo sugerido
+
+                // Nome do arquivo sugerido para download
+                a.download = response.headers.get('Content-Disposition').match(/filename="(.+)"/)[1] || 'video.mp4';
                 document.body.appendChild(a);
                 a.click();
                 window.URL.revokeObjectURL(url);

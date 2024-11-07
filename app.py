@@ -111,25 +111,20 @@ def download_video():
 
         ydl_opts = {
             "format": format_id,
-            "outtmpl": f"{download_folder}/%(title)s.%(ext)s",
-            "merge_output_format": "mp4",
-            "cookiefile": "cookies.txt"  # Usa cookies para baixar vídeos restritos
+            "outtmpl": f"{download_folder}/%(title)s.%(ext)s",  # Define nome e extensão corretamente
+            "merge_output_format": "mp4"
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info_dict = ydl.extract_info(youtube_link, download=True)
             title = info_dict.get('title', 'Vídeo')
-            return jsonify({"success": True, "message": f"Download concluído para: {title}"})
-        
-        @after_this_request
-        def remove_file(response):
-            try:
-                os.remove(file_path)
-            except Exception as e:
-                app.logger.error(f"Erro ao remover arquivo: {e}")
-            return response
+            file_path = os.path.join(download_folder, f"{title}.mp4")
 
-        return send_file(file_path, as_attachment=True, download_name=f"{title}.mp4")
+        # Verifique se o arquivo foi gerado corretamente antes de enviá-lo
+        if os.path.exists(file_path):
+            return send_file(file_path, as_attachment=True, download_name=f"{title}.mp4")
+        else:
+            return jsonify({"success": False, "message": "Arquivo não encontrado após download."})
 
     except Exception as e:
         return jsonify({"success": False, "message": str(e)})
