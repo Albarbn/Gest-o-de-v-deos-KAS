@@ -65,7 +65,8 @@ def video_info():
     try:
         ydl_opts = {
             "quiet": True,
-            "skip_download": True
+            "skip_download": True,
+            "cookiefile": "cookies.txt"  # Adiciona cookies para autenticação
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info_dict = ydl.extract_info(youtube_link, download=False)
@@ -108,26 +109,17 @@ def download_video():
         download_folder = "downloads"
         os.makedirs(download_folder, exist_ok=True)
 
-        # Definir opções do yt-dlp
         ydl_opts = {
-            "format": format_id,  # Usa o formato diretamente
+            "format": format_id,
             "outtmpl": f"{download_folder}/%(title)s.%(ext)s",
-            "merge_output_format": "mp4",  # Garante saída em MP4
-            "postprocessors": [
-                {
-                    "key": "FFmpegVideoConvertor",
-                    "preferedformat": "mp4"  # Converte se necessário
-                }
-            ]
+            "merge_output_format": "mp4",
+            "cookiefile": "cookies.txt"  # Usa cookies para baixar vídeos restritos
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info_dict = ydl.extract_info(youtube_link, download=True)
             title = info_dict.get('title', 'Vídeo')
             return jsonify({"success": True, "message": f"Download concluído para: {title}"})
-
-    except yt_dlp.utils.DownloadError as e:
-        return jsonify({"success": False, "message": f"Erro de download: {str(e)}"})
 
     except Exception as e:
         return jsonify({"success": False, "message": str(e)})
