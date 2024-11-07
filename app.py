@@ -179,3 +179,6 @@ def calculate():
 def clear_history():
     calculation_history.clear()
     return jsonify({"message": "Histórico limpo", "history": calculation_history})
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
