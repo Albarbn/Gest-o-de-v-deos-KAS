@@ -207,19 +207,31 @@
                 },
                 body: JSON.stringify({ youtube_link: link, quality: quality })
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert("Download iniciado: " + data.message);
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
                 } else {
-                    alert("Erro: " + data.message);
+                    return response.json().then(err => {
+                        throw new Error(err.message);
+                    });
                 }
             })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.style.display = "none";
+                a.href = url;
+                a.download = "video.mp4";  // Nome do arquivo sugerido
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+            })
             .catch(error => {
-                console.error("Erro ao iniciar download:", error);
+                console.error("Erro:", error);
                 alert("Erro ao tentar baixar o vídeo.");
             });
         }
+
             
         function copyTitle(title) {
             navigator.clipboard.writeText(title).then(() => {
